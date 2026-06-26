@@ -6,18 +6,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jb.ileviatime.R
+import com.jb.ileviatime.domain.model.DataStatus
+import com.jb.ileviatime.ui.formatter.DisplayFormatter
 import com.jb.ileviatime.ui.viewmodel.HomeViewModel
 import com.jb.ileviatime.ui.viewmodel.PinnedTripUiState
-import com.jb.ileviatime.domain.model.PassageTime
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,7 +26,8 @@ fun HomeScreen(
     onAddTrip: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val pinnedTrips by viewModel.pinnedTripsState.collectAsState()
+    val pinnedTrips by viewModel.pinnedTripsState.collectAsStateWithLifecycle()
+    val nowSeconds = System.currentTimeMillis() / 1000
 
     Scaffold(
         topBar = {
@@ -48,7 +50,7 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(pinnedTrips, key = { it.pinnedTrip.id }) { state ->
-                    PinnedTripCard(state, onDelete = { viewModel.deletePinnedTrip(state.pinnedTrip) })
+                    PinnedTripCard(state, nowSeconds, onDelete = { viewModel.deletePinnedTrip(state.pinnedTrip) })
                 }
             }
         }
@@ -58,6 +60,7 @@ fun HomeScreen(
 @Composable
 fun PinnedTripCard(
     state: PinnedTripUiState,
+    nowSeconds: Long,
     onDelete: () -> Unit
 ) {
     Card(
@@ -78,33 +81,32 @@ fun PinnedTripCard(
             
             state.passages.forEach { passage ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = formatPassageTime(passage.departure))
+                    Text(text = DisplayFormatter.formatPassageTime(passage.departure, nowSeconds))
                     Text(text = "→")
-                    Text(text = formatPassageTime(passage.arrival))
+                    Text(text = DisplayFormatter.formatPassageTime(passage.arrival, nowSeconds))
+                }
+            }
+
+            if (state.dataStatus is DataStatus.Stale) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Warning, 
+                        contentDescription = null, 
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(
+                            R.string.data_stale, 
+                            DisplayFormatter.formatTime(state.dataStatus.lastUpdateAt)
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
     }
-}
-
-fun formatPassageTime(time: PassageTime): String {
-    return when (time) {
-        is PassageTime.RealTime -> formatEpoch(time.epochSeconds, isScheduled = false)
-        is PassageTime.Scheduled -> formatEpoch(time.epochSeconds, isScheduled = true)
-        is PassageTime.NotAvailable -> "N/A"
-    }
-}
-
-fun formatEpoch(epoch: Long, isScheduled: Boolean): String {
-    val now = System.currentTimeMillis() / 1000
-    val diffMinutes = (epoch - now) / 60
-    
-    val timeStr = if (diffMinutes in 0..59) {
-        "\$diffMinutes\u0027"
-    } else {
-        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-        sdf.format(Date(epoch * 1000))
-    }
-    
-    return if (isScheduled) "(\$timeStr)" else timeStr
 }

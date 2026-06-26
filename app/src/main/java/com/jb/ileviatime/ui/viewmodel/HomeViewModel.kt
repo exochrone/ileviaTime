@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jb.ileviatime.data.local.dao.PinnedTripDao
 import com.jb.ileviatime.data.local.entities.PinnedTripEntity
+import com.jb.ileviatime.domain.model.DataStatus
 import com.jb.ileviatime.domain.model.PinnedTrip
 import com.jb.ileviatime.domain.model.TripPassage
 import com.jb.ileviatime.domain.usecase.GetNextPassagesUseCase
@@ -12,12 +13,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-sealed class DataStatus {
-    object Fresh : DataStatus()
-    data class Stale(val lastUpdateAt: Long) : DataStatus()
-    object Loading : DataStatus()
-}
 
 data class PinnedTripUiState(
     val pinnedTrip: PinnedTrip,
@@ -40,11 +35,11 @@ class HomeViewModel @Inject constructor(
             if (trips.isEmpty()) return@flatMapLatest flowOf(emptyList())
             
             val flows = trips.map { trip ->
-                getNextPassagesUseCase(trip).map { passages ->
+                getNextPassagesUseCase(trip).map { state ->
                     PinnedTripUiState(
                         pinnedTrip = trip,
-                        passages = passages,
-                        dataStatus = DataStatus.Fresh // TODO: Handle Stale
+                        passages = state.passages,
+                        dataStatus = state.status
                     )
                 }
             }

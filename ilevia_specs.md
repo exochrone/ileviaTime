@@ -49,7 +49,6 @@ Développer une application mobile native Android permettant aux usagers du rés
 pinned_trip
 ├── id: Int (PK, autoGenerate)
 ├── route_id: String
-├── trip_id: String
 ├── departure_stop_id: String
 ├── arrival_stop_id: String
 ├── transport_mode: String  // "BUS" | "TRAM"

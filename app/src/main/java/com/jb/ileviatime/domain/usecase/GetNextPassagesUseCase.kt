@@ -1,11 +1,10 @@
 package com.jb.ileviatime.domain.usecase
 
 import com.google.transit.realtime.FeedMessage
+import com.google.transit.realtime.TripUpdate
 import com.jb.ileviatime.data.local.dao.GtfsStaticDao
 import com.jb.ileviatime.data.repository.GtfsRtRepository
-import com.jb.ileviatime.domain.model.PassageTime
-import com.jb.ileviatime.domain.model.PinnedTrip
-import com.jb.ileviatime.domain.model.TripPassage
+import com.jb.ileviatime.domain.model.*
 import kotlinx.coroutines.flow.*
 import java.util.*
 import javax.inject.Inject
@@ -14,9 +13,21 @@ class GetNextPassagesUseCase @Inject constructor(
     private val rtRepository: GtfsRtRepository,
     private val staticDao: GtfsStaticDao
 ) {
-    operator fun invoke(pinnedTrip: PinnedTrip): Flow<List<TripPassage>> {
+    private var lastSuccessfulFeed: FeedMessage? = null
+    private var lastUpdateAt: Long = 0
+
+    operator fun invoke(pinnedTrip: PinnedTrip): Flow<PassagesState> {
         return rtRepository.feedFlow.map { result ->
-            val feed = result.getOrNull()
+            val now = System.currentTimeMillis() / 1000
+            
+            val feed = result.fold(
+                onSuccess = { 
+                    lastSuccessfulFeed = it
+                    lastUpdateAt = now
+                    it 
+                },
+                onFailure = { lastSuccessfulFeed }
+            )
             
             val candidates = staticDao.getCandidateTrips(
                 pinnedTrip.routeId,
@@ -24,8 +35,6 @@ class GetNextPassagesUseCase @Inject constructor(
                 pinnedTrip.arrivalStopId
             )
             
-            val now = System.currentTimeMillis() / 1000
-
             val staticPassages = candidates.map { candidate ->
                 val depEpoch = convertGtfsTimeToEpoch(candidate.departureTime)
                 val arrEpoch = convertGtfsTimeToEpoch(candidate.arrivalTime)
@@ -36,31 +45,32 @@ class GetNextPassagesUseCase @Inject constructor(
                 )
             }.filter { 
                 when (val d = it.departure) {
-                    is PassageTime.Scheduled -> d.epochSeconds >= now - 300 // Keep trips from last 5 mins
+                    is PassageTime.Scheduled -> d.epochSeconds >= now - 300
                     else -> false
                 }
             }
 
-            if (feed == null) {
-                return@map staticPassages.take(3)
-            }
+            val status = if (result.isSuccess) DataStatus.Fresh else if (lastSuccessfulFeed != null) DataStatus.Stale(lastUpdateAt) else DataStatus.Loading
 
-            // Correlate with RT
-            val rtPassages = correlateWithRt(feed, pinnedTrip)
-            
-            // Merge RT and Static: Prefer RT for same tripId
-            val rtMap = rtPassages.associateBy { it.tripId }
-            val merged = staticPassages.map { static ->
-                rtMap[static.tripId] ?: static
-            }
-
-            merged.sortedBy { 
-                when (val d = it.departure) {
-                    is PassageTime.RealTime -> d.epochSeconds
-                    is PassageTime.Scheduled -> d.epochSeconds
-                    else -> Long.MAX_VALUE
+            val passages = if (feed == null) {
+                staticPassages.take(3)
+            } else {
+                val rtPassages = correlateWithRt(feed, pinnedTrip)
+                val rtMap = rtPassages.associateBy { it.tripId }
+                val merged = staticPassages.map { static ->
+                    rtMap[static.tripId] ?: static
                 }
-            }.take(3)
+
+                merged.sortedBy { 
+                    when (val d = it.departure) {
+                        is PassageTime.RealTime -> d.epochSeconds
+                        is PassageTime.Scheduled -> d.epochSeconds
+                        else -> Long.MAX_VALUE
+                    }
+                }.take(3)
+            }
+
+            PassagesState(passages, status)
         }
     }
 
@@ -87,7 +97,7 @@ class GetNextPassagesUseCase @Inject constructor(
             }
     }
 
-    private fun extractTime(update: com.google.transit.realtime.TripUpdate.StopTimeUpdate): PassageTime {
+    private fun extractTime(update: TripUpdate.StopTimeUpdate): PassageTime {
         val time = if (update.hasDeparture()) {
             update.departure.time
         } else if (update.hasArrival()) {
@@ -102,12 +112,20 @@ class GetNextPassagesUseCase @Inject constructor(
         return try {
             val parts = gtfsTime.split(":").map { it.trim().toInt() }
             val calendar = Calendar.getInstance()
-            calendar.set(Calendar.HOUR_OF_DAY, parts[0])
-            calendar.set(Calendar.MINUTE, parts[1])
-            calendar.set(Calendar.SECOND, parts[2])
+            
+            // Set to current day's midnight first
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
             calendar.set(Calendar.MILLISECOND, 0)
+            
+            // Add hours, minutes, seconds. Calendar handles hours >= 24 correctly.
+            calendar.add(Calendar.HOUR_OF_DAY, parts[0])
+            calendar.add(Calendar.MINUTE, parts[1])
+            calendar.add(Calendar.SECOND, parts[2])
+
             calendar.timeInMillis / 1000
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             0L
         }
     }

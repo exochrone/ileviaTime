@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jb.ileviatime.R
 import com.jb.ileviatime.ui.viewmodel.TripCreationViewModel
 
@@ -19,12 +20,12 @@ fun TripCreationScreen(
     viewModel: TripCreationViewModel = hiltViewModel()
 ) {
     val modes = viewModel.modes
-    val selectedMode by viewModel.selectedMode.collectAsState()
-    val routes by viewModel.routes.collectAsState()
-    val selectedRoute by viewModel.selectedRoute.collectAsState()
-    val stops by viewModel.stops.collectAsState()
-    val selectedDepartureStop by viewModel.selectedDepartureStop.collectAsState()
-    val selectedArrivalStop by viewModel.selectedArrivalStop.collectAsState()
+    val selectedMode by viewModel.selectedMode.collectAsStateWithLifecycle()
+    val routes by viewModel.routes.collectAsStateWithLifecycle()
+    val selectedRoute by viewModel.selectedRoute.collectAsStateWithLifecycle()
+    val stops by viewModel.stops.collectAsStateWithLifecycle()
+    val selectedDepartureStop by viewModel.selectedDepartureStop.collectAsStateWithLifecycle()
+    val selectedArrivalStop by viewModel.selectedArrivalStop.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {

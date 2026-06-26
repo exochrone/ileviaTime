@@ -23,26 +23,32 @@ class GtfsStaticRepository @Inject constructor(
 
     private val prefs = context.getSharedPreferences("gtfs_prefs", Context.MODE_PRIVATE)
     private val STATIC_GTFS_URL = "https://transport.data.gouv.fr/resources/81995/download"
-    private val TAG = "GtfsStaticRepository"
+    private val USER_AGENT = "IleviaTime-Android-App"
 
     suspend fun shouldUpdate(): Boolean = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(STATIC_GTFS_URL).head().build()
+        val request = Request.Builder()
+            .url(STATIC_GTFS_URL)
+            .header("User-Agent", USER_AGENT)
+            .head()
+            .build()
         try {
             val response = okHttpClient.newCall(request).execute()
-            val lastModified = response.header("Last-Modified")
-            val contentLength = response.header("Content-Length")
-            val savedLastModified = prefs.getString("last_modified", "")
-            val savedContentLength = prefs.getString("content_length", "")
+            if (!response.isSuccessful) return@withContext true // On force l'update si le HEAD échoue
             
-            lastModified != savedLastModified || contentLength != savedContentLength
+            val lastModified = response.header("Last-Modified")
+            val savedLastModified = prefs.getString("last_modified", "")
+            lastModified != savedLastModified
         } catch (e: Exception) {
-            false
+            true // En cas d'erreur, on tente quand même le téléchargement
         }
     }
 
     suspend fun downloadAndImport(): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Starting GTFS download and import...")
-        val request = Request.Builder().url(STATIC_GTFS_URL).build()
+        Log.d(TAG, "Starting GTFS download...")
+        val request = Request.Builder()
+            .url(STATIC_GTFS_URL)
+            .header("User-Agent", USER_AGENT)
+            .build()
         try {
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {

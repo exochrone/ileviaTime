@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jb.ileviatime.ui.screens.LoadingScreen
 import com.jb.ileviatime.ui.screens.MainScreen
@@ -21,9 +22,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             IleviaTimeTheme {
                 val viewModel: MainViewModel = viewModel()
-                val isDataReady by viewModel.isDataReady.collectAsState()
-                val isSyncing by viewModel.isSyncing.collectAsState()
-                val syncError by viewModel.syncError.collectAsState()
+                val isDataReady by viewModel.isDataReady.collectAsStateWithLifecycle()
+                val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+                val syncError by viewModel.syncError.collectAsStateWithLifecycle()
 
                 if (!isDataReady || isSyncing || syncError != null) {
                     LoadingScreen(
