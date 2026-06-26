@@ -1,0 +1,42 @@
+# ----------------------
+# Gradle
+# ----------------------
+.gradle/
+build/
+**/build/
+
+# Fichiers de verrouillage Gradle (générés automatiquement)
+gradle/wrapper/gradle-wrapper.jar
+
+# ----------------------
+# Android Studio / IntelliJ
+# ----------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ----------------------
+# Fichiers locaux (spécifiques à la machine)
+# ----------------------
+local.properties
+
+# ----------------------
+# Signature / Sécurité
+# ----------------------
+*.keystore
+*.jks
+keystore.properties
+
+# ----------------------
+# Fichiers générés par le système
+# ----------------------
+.DS_Store        # macOS
+Thumbs.db        # Windows
+desktop.ini      # Windows
+
+# ----------------------
+# Fichiers de couverture de tests
+# ----------------------
+*.exec
+*.ec
