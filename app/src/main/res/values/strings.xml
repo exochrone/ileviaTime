@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">ilévia Time</string>
+    <string name="loading_gtfs">Initialisation des données ilévia…</string>
+    <string name="home_title">Mes trajets épinglés</string>
+    <string name="add_trip">Ajouter un trajet</string>
+    <string name="mode_bus">Bus</string>
+    <string name="mode_tram">Tramway</string>
+    <string name="select_mode">Sélectionnez un mode</string>
+    <string name="select_line">Sélectionnez une ligne</string>
+    <string name="select_departure">Arrêt de départ</string>
+    <string name="select_arrival">Arrêt d\u0027arrivée</string>
+    <string name="pin_trip">Épingler ce trajet</string>
+    <string name="data_stale">Données périmées. Dernière mise à jour : %s</string>
+    <string name="na">N/A</string>
+</resources>
