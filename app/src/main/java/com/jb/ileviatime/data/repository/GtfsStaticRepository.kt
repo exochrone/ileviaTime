@@ -24,6 +24,7 @@ class GtfsStaticRepository @Inject constructor(
     private val prefs = context.getSharedPreferences("gtfs_prefs", Context.MODE_PRIVATE)
     private val STATIC_GTFS_URL = "https://transport.data.gouv.fr/resources/81995/download"
     private val USER_AGENT = "IleviaTime-Android-App"
+    private val TAG = "GtfsStaticRepository"
 
     suspend fun shouldUpdate(): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
