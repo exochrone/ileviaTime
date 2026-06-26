@@ -28,7 +28,14 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val pinnedTrips by viewModel.pinnedTripsState.collectAsStateWithLifecycle()
-    val nowSeconds = System.currentTimeMillis() / 1000
+    var nowSeconds by remember { mutableLongStateOf(System.currentTimeMillis() / 1000) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(30_000)
+            nowSeconds = System.currentTimeMillis() / 1000
+        }
+    }
 
     Scaffold(
         topBar = {

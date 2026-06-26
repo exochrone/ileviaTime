@@ -5,23 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.jb.ileviatime.data.local.dao.PinnedTripDao
 import com.jb.ileviatime.data.local.entities.PinnedTripEntity
 import com.jb.ileviatime.data.repository.GtfsRtRepository
-import com.jb.ileviatime.domain.model.DataStatus
 import com.jb.ileviatime.domain.model.PinnedTrip
-import com.jb.ileviatime.domain.model.TripPassage
 import com.jb.ileviatime.domain.usecase.GetNextPassagesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-data class PinnedTripUiState(
-    val pinnedTrip: PinnedTrip,
-    val departureStopName: String,
-    val arrivalStopName: String,
-    val passages: List<TripPassage> = emptyList(),
-    val dataStatus: DataStatus = DataStatus.Loading
-)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -30,24 +20,33 @@ class HomeViewModel @Inject constructor(
     private val rtRepository: GtfsRtRepository
 ) : ViewModel() {
 
+    private data class TripWithNames(
+        val trip: PinnedTrip,
+        val departureName: String,
+        val arrivalName: String
+    )
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val pinnedTripsState: StateFlow<List<PinnedTripUiState>> = pinnedTripDao.getAllPinnedTripsWithNames()
         .map { list ->
             list.map { item ->
                 val trip = item.pinnedTrip.toDomain()
-                trip to (item.departureStopName ?: trip.departureStopId) to (item.arrivalStopName ?: trip.arrivalStopId)
+                TripWithNames(
+                    trip = trip,
+                    departureName = item.departureStopName ?: trip.departureStopId,
+                    arrivalName = item.arrivalStopName ?: trip.arrivalStopId
+                )
             }
         }
         .flatMapLatest { tripsWithNames ->
             if (tripsWithNames.isEmpty()) return@flatMapLatest flowOf(emptyList())
             
-            val flows = tripsWithNames.map { (tripAndDep, arrName) ->
-                val (trip, depName) = tripAndDep
-                getNextPassagesUseCase(trip).map { state ->
+            val flows = tripsWithNames.map { item ->
+                getNextPassagesUseCase(item.trip).map { state ->
                     PinnedTripUiState(
-                        pinnedTrip = trip,
-                        departureStopName = depName,
-                        arrivalStopName = arrName,
+                        pinnedTrip = item.trip,
+                        departureStopName = item.departureName,
+                        arrivalStopName = item.arrivalName,
                         passages = state.passages,
                         dataStatus = state.status
                     )
