@@ -55,7 +55,8 @@ class GetNextPassagesUseCase @Inject constructor(
             val passages = if (feed == null) {
                 staticPassages.take(3)
             } else {
-                val rtPassages = correlateWithRt(feed, pinnedTrip)
+                val candidateIds = staticPassages.map { it.tripId }.toSet()
+                val rtPassages = correlateWithRt(feed, pinnedTrip, candidateIds)
                 val rtMap = rtPassages.associateBy { it.tripId }
                 val merged = staticPassages.map { static ->
                     rtMap[static.tripId] ?: static
@@ -76,20 +77,32 @@ class GetNextPassagesUseCase @Inject constructor(
 
     private fun correlateWithRt(
         feed: FeedMessage,
-        pinnedTrip: PinnedTrip
+        pinnedTrip: PinnedTrip,
+        candidateIds: Set<String>
     ): List<TripPassage> {
+        val depBaseId = pinnedTrip.departureStopId.split(":").first()
+        val arrBaseId = pinnedTrip.arrivalStopId.split(":").first()
+
         return feed.entityList
-            .filter { it.hasTripUpdate() && it.tripUpdate.trip.routeId == pinnedTrip.routeId }
+            .filter { it.hasTripUpdate() }
+            .filter { entity ->
+                val trip = entity.tripUpdate.trip
+                trip.tripId in candidateIds || trip.routeId == pinnedTrip.routeId
+            }
             .mapNotNull { entity ->
                 val update = entity.tripUpdate
-                val departureUpdate = update.stopTimeUpdateList.find { it.stopId == pinnedTrip.departureStopId }
-                val arrivalUpdate = update.stopTimeUpdateList.find { it.stopId == pinnedTrip.arrivalStopId }
+                val departureUpdate = update.stopTimeUpdateList.find { 
+                    it.stopId.split(":").first() == depBaseId 
+                }
+                val arrivalUpdate = update.stopTimeUpdateList.find { 
+                    it.stopId.split(":").first() == arrBaseId 
+                }
                 
                 if (departureUpdate != null && arrivalUpdate != null) {
                     TripPassage(
                         tripId = update.trip.tripId,
-                        departure = extractTime(departureUpdate),
-                        arrival = extractTime(arrivalUpdate)
+                        departure = extractTime(departureUpdate, isDeparture = true),
+                        arrival = extractTime(arrivalUpdate, isDeparture = false)
                     )
                 } else {
                     null
@@ -97,13 +110,11 @@ class GetNextPassagesUseCase @Inject constructor(
             }
     }
 
-    private fun extractTime(update: TripUpdate.StopTimeUpdate): PassageTime {
-        val time = if (update.hasDeparture()) {
-            update.departure.time
-        } else if (update.hasArrival()) {
-            update.arrival.time
+    private fun extractTime(update: TripUpdate.StopTimeUpdate, isDeparture: Boolean): PassageTime {
+        val time = if (isDeparture) {
+            if (update.hasDeparture()) update.departure.time else if (update.hasArrival()) update.arrival.time else 0L
         } else {
-            0L
+            if (update.hasArrival()) update.arrival.time else if (update.hasDeparture()) update.departure.time else 0L
         }
         return if (time > 0) PassageTime.RealTime(time) else PassageTime.NotAvailable
     }

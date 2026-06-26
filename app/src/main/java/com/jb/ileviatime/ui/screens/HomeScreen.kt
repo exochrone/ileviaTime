@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,7 +51,12 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(pinnedTrips, key = { it.pinnedTrip.id }) { state ->
-                    PinnedTripCard(state, nowSeconds, onDelete = { viewModel.deletePinnedTrip(state.pinnedTrip) })
+                    PinnedTripCard(
+                        state = state,
+                        nowSeconds = nowSeconds,
+                        onDelete = { viewModel.deletePinnedTrip(state.pinnedTrip) },
+                        onRefresh = { viewModel.refresh() }
+                    )
                 }
             }
         }
@@ -61,19 +67,25 @@ fun HomeScreen(
 fun PinnedTripCard(
     state: PinnedTripUiState,
     nowSeconds: Long,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(text = "Ligne \${state.pinnedTrip.routeId}", style = MaterialTheme.typography.titleMedium)
-                    Text(text = "\${state.pinnedTrip.departureStopId} → \${state.pinnedTrip.arrivalStopId}", style = MaterialTheme.typography.bodySmall)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Ligne ${state.pinnedTrip.routeId}", style = MaterialTheme.typography.titleMedium)
+                    Text(text = "${state.departureStopName} → ${state.arrivalStopName}", style = MaterialTheme.typography.bodySmall)
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Supprimer")
+                Row {
+                    IconButton(onClick = onRefresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualiser")
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Supprimer")
+                    }
                 }
             }
             

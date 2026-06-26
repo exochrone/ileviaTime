@@ -53,7 +53,7 @@ class GtfsStaticRepository @Inject constructor(
         try {
             val response = okHttpClient.newCall(request).execute()
             if (!response.isSuccessful) {
-                Log.e(TAG, "Download failed: \${response.code}")
+                Log.e(TAG, "Download failed: ${response.code}")
                 return@withContext false
             }
             
@@ -237,7 +237,7 @@ class GtfsStaticRepository @Inject constructor(
                 dao.insertStopTimes(batch)
                 batch.clear()
                 count += 10000
-                Log.d(TAG, "Inserted \$count stop times...")
+                Log.d(TAG, "Inserted $count stop times...")
             }
             line = reader.readLine()
         }

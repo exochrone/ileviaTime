@@ -18,13 +18,13 @@ object DisplayFormatter {
         val diffMinutes = (epoch - nowSeconds) / 60
         
         val timeStr = if (diffMinutes in 0..59) {
-            "\$diffMinutes\u0027"
+            "$diffMinutes'"
         } else {
             val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
             sdf.format(Date(epoch * 1000))
         }
         
-        return if (isScheduled) "(\$timeStr)" else timeStr
+        return if (isScheduled) "($timeStr)" else timeStr
     }
 
     fun formatTime(epochSeconds: Long): String {

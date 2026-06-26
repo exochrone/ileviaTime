@@ -15,17 +15,25 @@ class GtfsRtRepository @Inject constructor(
     @ApplicationScope private val externalScope: CoroutineScope
 ) {
     private val RT_URL = "https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt"
+    private val _refreshTrigger = MutableSharedFlow<Unit>(replay = 1).apply { tryEmit(Unit) }
 
-    val feedFlow: Flow<Result<FeedMessage>> = flow {
-        while (true) {
-            emit(fetchFeed())
-            delay(30_000)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val feedFlow: Flow<Result<FeedMessage>> = _refreshTrigger.flatMapLatest {
+        flow {
+            while (true) {
+                emit(fetchFeed())
+                delay(30_000)
+            }
         }
     }.shareIn(
         scope = externalScope,
         started = SharingStarted.WhileSubscribed(5_000),
         replay = 1
     )
+
+    fun refresh() {
+        _refreshTrigger.tryEmit(Unit)
+    }
 
     private suspend fun fetchFeed(): Result<FeedMessage> = withContext(Dispatchers.IO) {
         val request = Request.Builder().url(RT_URL).build()
@@ -35,7 +43,7 @@ class GtfsRtRepository @Inject constructor(
                 val feed = FeedMessage.parseFrom(response.body?.byteStream())
                 Result.success(feed)
             } else {
-                Result.failure(Exception("HTTP \${response.code}"))
+                Result.failure(Exception("HTTP ${response.code}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

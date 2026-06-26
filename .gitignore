@@ -40,3 +40,7 @@ desktop.ini      # Windows
 # ----------------------
 *.exec
 *.ec
+# ----------------------
+.kotlin/
+ilevia_specs.md
+.gitignore
